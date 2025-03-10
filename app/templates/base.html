@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>token3d - LLM Visualization</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <nav class="navbar navbar-expand-lg fixed-top navbar-dark">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="#">
+        <i class="bi bi-braces-asterisk"></i> token3d
+      </a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav me-auto">
+          <li class="nav-item">
+            <a class="nav-link active" href="#">Home</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="https://github.com/varun1352/token3d" target="_blank">GitHub</a>
+          </li>
+        </ul>
+        <div class="d-flex">
+          <button id="theme-toggle" class="btn btn-outline-light">
+            <i class="bi bi-moon-stars"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  </nav>
+  
+  <div class="container-fluid">
+    <div class="row">
+      <!-- Left Sidebar: Parameter Controls -->
+      <aside class="col-md-3 p-0 sidebar" id="controls" style="width: 280px; flex-basis: 280px;">
+        <div id="left-resizer" class="resizer"></div>
+        <div class="sticky-top p-3">
+          <h5 class="d-flex align-items-center">
+            <i class="bi bi-sliders me-2"></i> Model Parameters
+            <span class="ms-auto badge bg-primary" data-bs-toggle="tooltip" title="These parameters affect how the model generates responses">
+              <i class="bi bi-info-circle"></i>
+            </span>
+          </h5>
+          <form id="paramForm" class="mt-3">
+            <!-- Parameter sliders here as before -->
+            <div class="mb-3">
+              <label for="temperature" class="form-label d-flex justify-content-between">
+                Temperature
+                <span class="param-value" id="temperature-value">0.7</span>
+              </label>
+              <input type="range" class="form-range" id="temperature" name="temperature" min="0" max="2" step="0.1" value="0.7">
+              <small class="text-muted">Controls randomness (0 = deterministic, 2 = random)</small>
+            </div>
+            
+            <div class="mb-3">
+              <label for="top_p" class="form-label d-flex justify-content-between">
+                Top-p
+                <span class="param-value" id="top_p-value">0.9</span>
+              </label>
+              <input type="range" class="form-range" id="top_p" name="top_p" min="0" max="1" step="0.05" value="0.9">
+              <small class="text-muted">Nucleus sampling probability threshold</small>
+            </div>
+            
+            <div class="mb-3">
+              <label for="top_k" class="form-label d-flex justify-content-between">
+                Top-k
+                <span class="param-value" id="top_k-value">50</span>
+              </label>
+              <input type="range" class="form-range" id="top_k" name="top_k" min="1" max="100" step="1" value="50">
+              <small class="text-muted">Limits vocabulary to top K tokens</small>
+            </div>
+            
+            <div class="mb-3">
+              <label for="presence_penalty" class="form-label d-flex justify-content-between">
+                Presence Penalty
+                <span class="param-value" id="presence_penalty-value">0.0</span>
+              </label>
+              <input type="range" class="form-range" id="presence_penalty" name="presence_penalty" min="-2" max="2" step="0.1" value="0.0">
+              <small class="text-muted">Penalizes repeated tokens (-2 to 2)</small>
+            </div>
+            
+            <div class="mb-3">
+              <label for="max_tokens" class="form-label d-flex justify-content-between">
+                Max Tokens
+                <span class="param-value" id="max_tokens-value">200</span>
+              </label>
+              <input type="range" class="form-range" id="max_tokens" name="max_tokens" min="10" max="1000" step="10" value="200">
+              <small class="text-muted">Maximum response length</small>
+            </div>
+            
+            <button type="submit" class="btn btn-primary w-100">
+              <i class="bi bi-check-circle me-1"></i> Apply Parameters
+            </button>
+          </form>
+
+          <hr>
+          
+          <div class="mt-4">
+            <h5 class="d-flex align-items-center">
+              <i class="bi bi-graph-up me-2"></i> Visualization Controls
+              <!-- Info button for 3D Graph details -->
+              <button type="button" class="btn btn-sm btn-outline-primary ms-auto" data-bs-toggle="modal" data-bs-target="#graphInfoModal">
+                <i class="bi bi-info-circle"></i>
+              </button>
+            </h5>
+            
+            <div class="mb-3 mt-3">
+              <label for="layer-select" class="form-label">Attention Layer</label>
+              <select class="form-select" id="layer-select">
+                <!-- Will be populated dynamically -->
+              </select>
+            </div>
+            
+            <div class="mb-3">
+              <label for="head-select" class="form-label">Attention Head</label>
+              <select class="form-select" id="head-select">
+                <!-- Will be populated dynamically -->
+              </select>
+            </div>
+            
+            <div class="mb-3">
+              <label for="threshold" class="form-label d-flex justify-content-between">
+                Attention Threshold
+                <span class="param-value" id="threshold-value">0.01</span>
+              </label>
+              <input type="range" class="form-range" id="threshold" min="0.001" max="0.1" step="0.001" value="0.01">
+              <small class="text-muted">Filter out weak attention connections</small>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Center: Chat Interface -->
+      <main class="col p-0" id="chat-container">
+        <div class="card shadow-sm h-100">
+          <div class="card-header d-flex align-items-center">
+            <i class="bi bi-chat-dots me-2"></i>
+            <span>Chat with Model</span>
+            <!-- Info button for Saliency details -->
+            <button type="button" class="btn btn-sm btn-outline-primary ms-auto" data-bs-toggle="modal" data-bs-target="#saliencyInfoModal">
+              <i class="bi bi-info-circle"></i>
+            </button>
+            <div class="ms-2">
+              <button id="clear-chat" class="btn btn-sm btn-outline-light">
+                <i class="bi bi-trash"></i> Clear
+              </button>
+            </div>
+          </div>
+          <div class="card-body">
+            <div id="chat-box">
+              <div class="welcome-message alert alert-info">
+                <h5><i class="bi bi-info-circle"></i> Welcome to token3d</h5>
+                <p>This tool helps you visualize how language models process and attend to text.</p>
+                <p>Features:</p>
+                <ul>
+                  <li>3D attention visualization</li>
+                  <li>Token saliency analysis</li>
+                  <li>Parameter experimentation</li>
+                </ul>
+              </div>
+            </div>
+            <form id="chatForm">
+              <div class="input-group">
+                <input type="text" class="form-control" id="chatInput" placeholder="Type your message here...">
+                <button class="btn btn-primary" type="submit">
+                  <i class="bi bi-send me-1"></i> Send
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </main>
+
+      <!-- Right Sidebar: 3D Graph -->
+      <aside class="col-md-3 p-0 sidebar" id="graph-container" style="width: 400px; flex-basis: 400px;">
+        <div id="right-resizer" class="resizer"></div>
+        <div class="sticky-top p-3">
+          <div class="card shadow-sm">
+            <div class="card-header d-flex align-items-center">
+              <i class="bi bi-diagram-3 me-2"></i>
+              <span>3D Attention Graph</span>
+              <div class="ms-auto">
+                <button id="fullscreen-graph" class="btn btn-sm btn-outline-light">
+                  <i class="bi bi-arrows-fullscreen"></i>
+                </button>
+              </div>
+            </div>
+            <div class="card-body">
+              <div id="graph3d" style="width:100%; height:500px;"></div>
+              <div id="graph-legend" class="mt-3 small">
+                <div class="d-flex align-items-center mb-2">
+                  <span class="legend-dot" style="background-color: red;"></span>
+                  <span class="ms-2">Tokens</span>
+                </div>
+                <div class="d-flex align-items-center">
+                  <span class="legend-line" style="background-color: blue;"></span>
+                  <span class="ms-2">Attention (thicker = stronger)</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+  
+  <!-- Fullscreen Modal for Graph -->
+  <div class="modal fade" id="graphModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-fullscreen">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">3D Attention Graph</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div id="graph3d-fullscreen" style="width:100%; height:calc(100vh - 120px);"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Modal for 3D Graph Info -->
+  <div class="modal fade" id="graphInfoModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">3D Attention Graph Details</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p>The 3D Attention Graph visualizes how the model distributes attention among tokens in your prompt. Each node represents a token, and the edges represent attention weights (thicker edges indicate stronger connections). You can adjust which layer and head to view using the controls in the left sidebar.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Modal for Saliency Info -->
+  <div class="modal fade" id="saliencyInfoModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Saliency Analysis Details</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p>The Saliency feature highlights the importance of each token in your prompt by computing the gradient-based impact of the token on the model's output. Higher saliency values indicate tokens that strongly influence the model’s decision. Click the arrow (▼) next to your message to view saliency details.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
